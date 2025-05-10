@@ -2,30 +2,31 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/*.js",
+      "src": "src/index.js", // Express 앱의 메인 진입점 파일
       "use": "@vercel/node"
     },
     {
-      "src": "public/**",
+      "src": "public", // public 폴더 자체를 지정 (내부 파일 포함)
       "use": "@vercel/static"
+      // "config": { "directoryListing": false } // 필요시 추가
     }
   ],
   "routes": [
     {
-      "src": "/api/search",
-      "dest": "/api/search.js"
+      "src": "/api/(.*)",      // /api/ 로 시작하는 모든 요청
+      "dest": "src/index.js"  // Express 앱으로 전달
+    },
+    // @vercel/static 빌드가 public 폴더를 처리하므로,
+    // 명시적인 public 폴더 라우팅은 Vercel이 자동으로 처리하도록 둘 수 있습니다.
+    // Vercel은 'public'이라는 이름의 폴더를 감지하고 정적 에셋으로 제공합니다.
+    // 만약 SPA fallback 등 특정 동작이 필요하면 아래와 같이 명시합니다.
+    {
+      "handle": "filesystem" // 먼저 파일 시스템에서 일치하는 파일 찾기
     },
     {
-      "src": "/api/stock",
-      "dest": "/api/stock.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/public/$1"
-    },
-    {
-      "src": "/",
-      "dest": "/public/index.html"
+      "src": "/(.*)",         // 파일 시스템에서 찾지 못한 모든 나머지 요청 (SPA fallback)
+      "dest": "/index.html", // public 폴더의 index.html로 (Vercel이 public을 기준으로 경로 해석)
+      "status": 200
     }
   ]
 }
