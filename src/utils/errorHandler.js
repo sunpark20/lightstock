@@ -1,14 +1,10 @@
 /**
- * Custom error class for API errors
+ * Error handling utility functions
  */
+
+// Custom API error class
 class ApiError extends Error {
-  /**
-   * Create a new API error
-   * @param {string} message - Error message
-   * @param {number} statusCode - HTTP status code
-   * @param {boolean} isOperational - Whether this is an operational error
-   */
-  constructor(message, statusCode = 500, isOperational = true) {
+  constructor(statusCode, message, isOperational = true) {
     super(message);
     this.statusCode = statusCode;
     this.isOperational = isOperational;
@@ -17,58 +13,32 @@ class ApiError extends Error {
   }
 }
 
-/**
- * Helper function to create specific error types
- */
-const createError = {
-  badRequest: (message = 'Bad Request') => 
-    new ApiError(message, 400),
-  
-  unauthorized: (message = 'Unauthorized') => 
-    new ApiError(message, 401),
-  
-  forbidden: (message = 'Forbidden') => 
-    new ApiError(message, 403),
-  
-  notFound: (message = 'Resource not found') => 
-    new ApiError(message, 404),
-  
-  tooManyRequests: (message = 'Too many requests, please try again later') => 
-    new ApiError(message, 429),
-  
-  internal: (message = 'Internal Server Error', isOperational = true) => 
-    new ApiError(message, 500, isOperational)
+// Handler for catching async errors
+const catchAsync = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch((err) => next(err));
 };
 
-/**
- * Global error handler middleware
- */
-const errorMiddleware = (err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Something went wrong';
+// Error response formatter
+const formatErrorResponse = (err, req, res) => {
+  const { statusCode = 500, message } = err;
   
-  // Log error details
-  console.error(`[ERROR] ${err.name}: ${err.message}`);
-  if (!err.isOperational) {
-    console.error(err.stack);
-  }
-  
-  // Prepare the response
-  const errorResponse = {
-    error: statusCode === 500 ? 'Internal Server Error' : message,
-    status: statusCode
+  // Default response structure
+  const response = {
+    status: 'error',
+    message: statusCode === 500 ? 'Internal server error' : message
   };
   
-  // Add stack trace in development
-  if (process.env.NODE_ENV === 'development' && !err.isOperational) {
-    errorResponse.stack = err.stack;
+  // Add more details in development mode
+  if (process.env.NODE_ENV === 'development') {
+    response.stack = err.stack;
+    response.detail = err.message;
   }
   
-  res.status(statusCode).json(errorResponse);
+  return res.status(statusCode).json(response);
 };
 
 module.exports = {
   ApiError,
-  createError,
-  errorMiddleware
+  catchAsync,
+  formatErrorResponse
 };
