@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LightStock - Minimal Stock Information</title>
+  <meta name="description" content="Get stock information with minimal data usage">
+  <!-- Inline critical CSS to avoid extra requests -->
+  <style>
+    /* Reset and base styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f9f9f9;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 1rem;
+      font-size: 16px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: #222;
+    }
+    h2 {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+      color: #444;
+    }
+    
+    /* Tab navigation */
+    .tabs {
+      display: flex;
+      margin: 1.5rem 0 1rem;
+      border-bottom: 1px solid #ccc;
+    }
+    .tab {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      background-color: #f2f2f2;
+      border: 1px solid #ccc;
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      margin-right: 0.25rem;
+    }
+    .tab.active {
+      background-color: #fff;
+      border-bottom: 1px solid #fff;
+      margin-bottom: -1px;
+      font-weight: bold;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    
+    /* Search styles */
+    .search-container {
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+    .search-input {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    .search-results {
+      margin-top: 1px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      display: none;
+      position: absolute;
+      width: 100%;
+      background: white;
+      z-index: 10;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .search-result-item {
+      padding: 0.5rem;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .search-result-item:hover {
+      background-color: #f0f0f0;
+    }
+    .search-result-item:last-child {
+      border-bottom: none;
+    }
+    
+    /* Stock info styles */
+    .stock-info {
+      margin-top: 1.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 1rem;
+      display: none;
+    }
+    .stock-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .stock-symbol {
+      font-weight: bold;
+    }
+    .stock-updated {
+      font-size: 0.85rem;
+      color: #777;
+    }
+    .stock-price {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin: 0.5rem 0;
+    }
+    .stock-change {
+      margin-bottom: 0.5rem;
+    }
+    .stock-change.positive {
+      color: #28a745;
+    }
+    .stock-change.negative {
+      color: #dc3545;
+    }
+    .stock-range {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+    }
+    
+    /* Favorite button */
+    .favorite-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.3rem;
+      color: #ccc;
+      margin-left: 0.5rem;
+    }
+    .favorite-btn.active {
+      color: #ffc107;
+    }
+    
+    /* Favorites table */
+    .favorites-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    .favorites-table th {
+      text-align: left;
+      padding: 0.5rem;
+      border-bottom: 2px solid #ddd;
+      cursor: pointer;
+    }
+    .favorites-table th:hover {
+      background-color: #f5f5f5;
+    }
+    .favorites-table td {
+      padding: 0.5rem;
+      border-bottom: 1px solid #eee;
+    }
+    .favorites-table tr:last-child td {
+      border-bottom: none;
+    }
+    .favorites-table .positive {
+      color: #28a745;
+    }
+    .favorites-table .negative {
+      color: #dc3545;
+    }
+    .favorites-empty {
+      padding: 2rem 0;
+      text-align: center;
+      color: #777;
+    }
+    
+    /* Utility styles */
+    .error-message {
+      color: #dc3545;
+      margin-top: 0.5rem;
+      display: none;
+    }
+    .market-status {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      color: #6c757d;
+    }
+    .mock-data-notice {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background-color: #fff3cd;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: #856404;
+      display: none;
+    }
+    .loading {
+      display: none;
+      margin-top: 0.5rem;
+      color: #666;
+    }
+    .footer {
+      margin-top: 2rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #888;
+    }
+    @media (max-width: 480px) {
+      body {
+        padding: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>LightStock</h1>
+  <p>Get stock information with minimal data usage.</p>
+
+  <!-- Tab Navigation -->
+  <div class="tabs">
+    <div class="tab active" data-tab="search-tab">Search</div>
+    <div class="tab" data-tab="favorites-tab">Favorites</div>
+  </div>
+
+  <!-- Search Tab Content -->
+  <div id="search-tab" class="tab-content active">
+    <div class="search-container">
+      <input 
+        type="text" 
+        id="stockSearch" 
+        class="search-input" 
+        placeholder="Enter stock symbol or company name" 
+        autocomplete="off"
+      >
+      <div id="searchResults" class="search-results"></div>
+      <div id="loadingSearch" class="loading">Searching...</div>
+      <div id="errorSearch" class="error-message"></div>
+    </div>
+
+    <div id="stockInfo" class="stock-info">
+      <div class="stock-header">
+        <span id="stockName" class="stock-name"></span>
+        <div>
+          <button id="favoriteButton" class="favorite-btn" title="Add to favorites">★</button>
+          <span id="stockSymbol" class="stock-symbol"></span>
+        </div>
+      </div>
+      <div id="stockPrice" class="stock-price"></div>
+      <div id="stockChange" class="stock-change"></div>
+      <div id="stockRange" class="stock-range"></div>
+      <div id="stockUpdated" class="stock-updated"></div>
+      <div id="marketStatus" class="market-status" style="display: none;"></div>
+      <div id="mockDataNotice" class="mock-data-notice" style="display: none;">Note: Showing demonstration data. Real-time data currently unavailable.</div>
+    </div>
+
+    <div id="loadingStock" class="loading">Loading stock data...</div>
+    <div id="errorStock" class="error-message"></div>
+  </div>
+
+  <!-- Favorites Tab Content -->
+  <div id="favorites-tab" class="tab-content">
+    <table class="favorites-table">
+      <thead>
+        <tr>
+          <th id="sortName">Name</th>
+          <th id="sortPrice">Price (%)</th>
+          <th id="sortRange">Day Range</th>
+        </tr>
+      </thead>
+      <tbody id="favoritesTableBody">
+        <!-- Favorite stocks will be listed here -->
+      </tbody>
+    </table>
+    <div id="favoritesEmpty" class="favorites-empty">No favorites added yet. Search for stocks and add them to favorites!</div>
+  </div>
+
+  <div class="footer">
+    <p>LightStock &copy; 2025 - Minimal stock data</p>
+  </div>
+
+  <!-- Inline JavaScript -->
+  <script>
+    // DOM Elements
+    const searchInput = document.getElementById('stockSearch');
+    const searchResults = document.getElementById('searchResults');
+    const loadingSearch = document.getElementById('loadingSearch');
+    const errorSearch = document.getElementById('errorSearch');
+    
+    const stockInfo = document.getElementById('stockInfo');
+    const stockName = document.getElementById('stockName');
+    const stockSymbol = document.getElementById('stockSymbol');
+    const stockPrice = document.getElementById('stockPrice');
+    const stockChange = document.getElementById('stockChange');
+    const stockRange = document.getElementById('stockRange');
+    const stockUpdated = document.getElementById('stockUpdated');
+    const marketStatus = document.getElementById('marketStatus');
+    const mockDataNotice = document.getElementById('mockDataNotice');
+    const loadingStock = document.getElementById('loadingStock');
+    const errorStock = document.getElementById('errorStock');
+    const favoriteButton = document.getElementById('favoriteButton');
+    
+    const favoritesTableBody = document.getElementById('favoritesTableBody');
+    const favoritesEmpty = document.getElementById('favoritesEmpty');
+    const sortNameButton = document.getElementById('sortName');
+    const sortPriceButton = document.getElementById('sortPrice');
+    const sortRangeButton = document.getElementById('sortRange');
+    
+    // Tab elements
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    // State
+    let currentStock = null;
+    let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    
+    // Helper Functions
+    function debounce(func, delay) {
+      let timeoutId;
+      return function(...args) {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        timeoutId = setTimeout(() => {
+          func.apply(this, args);
+        }, delay);
+      };
+    }
+
+    function formatPrice(price, currency = 'USD') {
+      if (price === null || price === undefined) return 'N/A';
+      return price.toFixed(2) + ' ' + currency;
+    }
+
+    function formatChange(change, changePercent) {
+      if (change === null || change === undefined || changePercent === null || changePercent === undefined) {
+        return 'N/A';
+      }
+      return `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
+    }
+
+    function formatDate(dateString) {
+      if (!dateString) return 'N/A';
+      
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleTimeString(undefined, {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }) + ' ' + date.toLocaleDateString();
+      } catch (e) {
+        return dateString;
+      }
+    }
+
+    // Tab Functionality
+    function setActiveTab(tabId) {
+      // Remove active class from all tabs and contents
+      tabs.forEach(tab => tab.classList.remove('active'));
+      tabContents.forEach(content => content.classList.remove('active'));
+      
+      // Add active class to selected tab and content
+      document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+      
+      // If switching to favorites tab, update the favorites list
+      if (tabId === 'favorites-tab') {
+        renderFavorites();
+      }
+    }
+    
+    // Favorites Functionality
+    function addToFavorites(stock) {
+      // Check if already in favorites
+      const existingIndex = favorites.findIndex(f => f.ticker === stock.ticker);
+      
+      if (existingIndex >= 0) {
+        // Update existing entry
+        favorites[existingIndex] = stock;
+      } else {
+        // Add new entry
+        favorites.push(stock);
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('favorites', JSON.stringify(favorites));
+      
+      // Update UI
+      updateFavoriteButton(true);
+    }
+    
+    function removeFromFavorites(ticker) {
+      favorites = favorites.filter(f => f.ticker !== ticker);
+      
+      // Save to localStorage
+      localStorage.setItem('favorites', JSON.stringify(favorites));
+      
+      // Update UI
+      if (currentStock && currentStock.ticker === ticker) {
+        updateFavoriteButton(false);
+      }
+      
+      // Re-render favorites if we're on that tab
+      if (document.getElementById('favorites-tab').classList.contains('active')) {
+        renderFavorites();
+      }
+    }
+    
+    function isInFavorites(ticker) {
+      return favorites.some(f => f.ticker === ticker);
+    }
+    
+    function updateFavoriteButton(isFavorite) {
+      if (isFavorite) {
+        favoriteButton.classList.add('active');
+        favoriteButton.title = 'Remove from favorites';
+      } else {
+        favoriteButton.classList.remove('active');
+        favoriteButton.title = 'Add to favorites';
+      }
+    }
+    
+    function renderFavorites() {
+      // Clear table
+      favoritesTableBody.innerHTML = '';
+      
+      if (favorites.length === 0) {
+        favoritesEmpty.style.display = 'block';
+        return;
+      }
+      
+      favoritesEmpty.style.display = 'none';
+      
+      // Sort by name by default
+      const sortedFavorites = [...favorites].sort((a, b) => a.name.localeCompare(b.name));
+      
+      // Create table rows
+      sortedFavorites.forEach(stock => {
+        const row = document.createElement('tr');
+        
+        const nameCell = document.createElement('td');
+        nameCell.textContent = `${stock.name} (${stock.ticker})`;
+        nameCell.style.cursor = 'pointer';
+        nameCell.addEventListener('click', () => {
+          setActiveTab('search-tab');
+          getStockInfo(stock.ticker);
+        });
+        
+        const priceCell = document.createElement('td');
+        const priceText = formatPrice(stock.price, stock.currency);
+        const changeText = formatChange(stock.change, stock.changePercent);
+        priceCell.textContent = `${priceText} ${changeText}`;
+        if (stock.change > 0) {
+          priceCell.classList.add('positive');
+        } else if (stock.change < 0) {
+          priceCell.classList.add('negative');
+        }
+        
+        const rangeCell = document.createElement('td');
+        rangeCell.textContent = `${formatPrice(stock.dayLow)} - ${formatPrice(stock.dayHigh)}`;
+        
+        row.appendChild(nameCell);
+        row.appendChild(priceCell);
+        row.appendChild(rangeCell);
+        
+        favoritesTableBody.appendChild(row);
+      });
+    }
+    
+    // Search Functionality
+    async function searchStocks(query) {
+      if (!query || query.length < 2) {
+        searchResults.style.display = 'none';
+        return;
+      }
+      
+      loadingSearch.style.display = 'block';
+      errorSearch.style.display = 'none';
+      searchResults.style.display = 'none';
+      
+      try {
+        const response = await fetch(`/api/stock/search/query?q=${encodeURIComponent(query)}`);
+        
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Clear previous results
+        searchResults.innerHTML = '';
+        
+        if (data && data.length > 0) {
+          // Create elements for each result
+          data.forEach(result => {
+            const item = document.createElement('div');
+            item.className = 'search-result-item';
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = `${result.name} (${result.symbol})`;
+            item.appendChild(nameSpan);
+            
+            // Add favorite star if in favorites
+            const isFav = isInFavorites(result.symbol);
+            const favStar = document.createElement('span');
+            favStar.className = isFav ? 'favorite-btn active' : 'favorite-btn';
+            favStar.textContent = '★';
+            favStar.addEventListener('click', (e) => {
+              e.stopPropagation(); // Prevent triggering the parent click event
+              
+              if (isFav) {
+                removeFromFavorites(result.symbol);
+                favStar.classList.remove('active');
+              } else {
+                // We need to fetch full data first
+                getStockInfo(result.symbol, true).then(() => {
+                  if (currentStock) {
+                    addToFavorites(currentStock);
+                    favStar.classList.add('active');
+                  }
+                });
+              }
+            });
+            item.appendChild(favStar);
+            
+            // Click event for the row
+            item.addEventListener('click', () => {
+              searchInput.value = result.name;
+              searchResults.style.display = 'none';
+              getStockInfo(result.symbol);
+            });
+            
+            searchResults.appendChild(item);
+          });
+          
+          searchResults.style.display = 'block';
+        } else {
+          errorSearch.textContent = 'No results found';
+          errorSearch.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+        errorSearch.textContent = 'Search failed. Try again.';
+        errorSearch.style.display = 'block';
+      } finally {
+        loadingSearch.style.display = 'none';
+      }
+    }
+
+    // Stock Info Functionality
+    async function getStockInfo(symbol, silentMode = false) {
+      if (!symbol) return;
+      
+      if (!silentMode) {
+        stockInfo.style.display = 'none';
+        loadingStock.style.display = 'block';
+        errorStock.style.display = 'none';
+      }
+      
+      try {
+        const response = await fetch(`/api/stock/${encodeURIComponent(symbol)}`);
+        
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+        
+        const stock = await response.json();
+        currentStock = stock;
+        
+        if (silentMode) {
+          return; // Don't update UI in silent mode
+        }
+        
+        // Update UI with stock data
+        stockName.textContent = stock.name || 'N/A';
+        stockSymbol.textContent = stock.ticker || 'N/A';
+        stockPrice.textContent = formatPrice(stock.price, stock.currency);
+        
+        // Format change with color and sign
+        const changeText = formatChange(stock.change, stock.changePercent);
+        
+        stockChange.textContent = changeText;
+        stockChange.className = 'stock-change';
+        if (stock.change > 0) {
+          stockChange.classList.add('positive');
+        } else if (stock.change < 0) {
+          stockChange.classList.add('negative');
+        }
+        
+        // Show day's range
+        stockRange.textContent = `Day Range: ${formatPrice(stock.dayLow)} - ${formatPrice(stock.dayHigh)}`;
+        
+        // Show update time
+        stockUpdated.textContent = `Updated: ${formatDate(stock.updatedAt)}`;
+        
+        // Update favorite button
+        updateFavoriteButton(isInFavorites(stock.ticker));
+        
+        // Show market status if market is closed
+        if (stock.isMarketClosed) {
+          marketStatus.style.display = 'block';
+          let statusText = 'Market is currently closed. ';
+          
+          if (stock.lastTradingDate) {
+            statusText += `Showing last available data from ${stock.lastTradingDate}.`;
+          }
+          
+          marketStatus.textContent = statusText;
+        } else {
+          marketStatus.style.display = 'none';
+        }
+        
+        // Show mock data notice if necessary
+        if (stock.isMockData) {
+          mockDataNotice.style.display = 'block';
+        } else {
+          mockDataNotice.style.display = 'none';
+        }
+        
+        stockInfo.style.display = 'block';
+      } catch (error) {
+        console.error('Stock info error:', error);
+        
+        if (silentMode) {
+          return; // Don't update UI in silent mode
+        }
+        
+        // Provide more informative error message
+        let errorMsg = 'Could not load stock information. ';
+        
+        if (error.message && error.message.includes('Market may be closed')) {
+          errorMsg = 'Market is currently closed and we couldn\'t retrieve historical data. Please try again with a valid symbol.';
+        } else if (error.response && error.response.status === 404) {
+          errorMsg = `Could not find stock with symbol "${symbol}". Please check the symbol and try again.`;
+        } else {
+          errorMsg += 'Please try again later.';
+        }
+        
+        errorStock.textContent = errorMsg;
+        errorStock.style.display = 'block';
+      } finally {
+        if (!silentMode) {
+          loadingStock.style.display = 'none';
+        }
+      }
+    }
+
+    // Event Listeners
+    const debouncedSearch = debounce(searchStocks, 300);
+    
+    // Search tab events
+    searchInput.addEventListener('input', (e) => {
+      debouncedSearch(e.target.value.trim());
+    });
+    
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const query = e.target.value.trim();
+        if (query) {
+          searchResults.style.display = 'none';
+          getStockInfo(query);
+        }
+      }
+    });
+    
+    // Favorite button event
+    favoriteButton.addEventListener('click', () => {
+      if (!currentStock) return;
+      
+      if (isInFavorites(currentStock.ticker)) {
+        removeFromFavorites(currentStock.ticker);
+      } else {
+        addToFavorites(currentStock);
+      }
+    });
+    
+    // Tab navigation
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        setActiveTab(tab.getAttribute('data-tab'));
+      });
+    });
+    
+    // Close search results when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.search-container')) {
+        searchResults.style.display = 'none';
+      }
+    });
+
+    // Favorites sorting
+    sortNameButton.addEventListener('click', () => {
+      favorites.sort((a, b) => a.name.localeCompare(b.name));
+      renderFavorites();
+    });
+    
+    sortPriceButton.addEventListener('click', () => {
+      favorites.sort((a, b) => (b.price || 0) - (a.price || 0));
+      renderFavorites();
+    });
+    
+    sortRangeButton.addEventListener('click', () => {
+      favorites.sort((a, b) => (b.dayHigh - b.dayLow || 0) - (a.dayHigh - a.dayLow || 0));
+      renderFavorites();
+    });
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const symbol = urlParams.get('symbol');
+      
+      if (symbol) {
+        searchInput.value = symbol;
+        getStockInfo(symbol);
+      }
+      
+      // Initial render of favorites
+      renderFavorites();
+    });
+  </script>
+</body>
+</html>
